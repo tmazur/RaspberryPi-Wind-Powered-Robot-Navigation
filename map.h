@@ -24,12 +24,11 @@ private:
 	LngLatPosMap map;
 	void setLatitudeCount();
 	bool setLongitudeCount(int);
-	void parseMap();
+	bool parseMap();
 	void parseMapParam(string);
 	void parseMapLine(string,int);
 	bool verifyMapParams();
 public:
-	Map() {};
 	Map(string mapName);
 	string getMapName() {return mapName;};
 	double getLongitudeStart() {return longitudeStart;};

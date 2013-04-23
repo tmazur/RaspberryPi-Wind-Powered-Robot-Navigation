@@ -10,6 +10,7 @@
 #include "log.cpp"
 #include "lnglat.h"
 #include "map.h"
+#include "db.h"
 using namespace std;
 
 typedef map<LngLatPos,LngLatPos> ClosedCellMap; // (currentPos,parentPos)
@@ -18,12 +19,14 @@ class Controller {
 private:
     LngLat lngLatGoal;
 	LngLat lngLatCurrent;
-	Map map;
+	Map* map;
+    Db* db;
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
 	void astar();
     string getPath(ClosedCellMap);
     string getPathNextCoord(ClosedCellMap);
+    void run();
 public:
 	Controller();
 };
@@ -42,6 +45,16 @@ struct OpenCell {
 
     bool operator < (const OpenCell& str) const {
         return (f > str.f);
+    }
+};
+
+struct Move {
+    int dx;
+    int dy;
+    float cost;
+
+    Move(int dx, int dy, float cost) : dx(dx), dy(dy), cost(cost) {
+        
     }
 };
 

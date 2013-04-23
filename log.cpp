@@ -7,6 +7,14 @@ using namespace std;
 class Log
 {
     public:
+        static void d(string msg) {
+            Log::getInstance().debug(msg);
+        }
+
+        static void e(string msg) {
+            Log::getInstance().error(msg);
+        }
+
         static Log& getInstance() {
             static Log instance;
             return instance;

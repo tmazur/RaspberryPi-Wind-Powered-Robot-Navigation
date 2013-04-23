@@ -1,9 +1,9 @@
 #include "map.h"
 
-Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0) {
-	this->mapName = mapName;
-	this->parseMap();
-	this->debugInfo();
+Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
+	if(this->parseMap()) {
+		Log::d("Map loaded successfuly.");
+	}
 }
 
 bool Map::setLongitudeCount(int count) {
@@ -20,7 +20,7 @@ void Map::setLatitudeCount() {
 	this->latitudeCount=(this->map.size()/this->longitudeCount);
 }
 
-void Map::parseMap() {
+bool Map::parseMap() {
 	ifstream mapFile;
 	string line;
 	bool mapStart = false;
@@ -43,16 +43,16 @@ void Map::parseMap() {
 			}
 		}
 	} else {
-		;
+		Log::e("Map::parseMap; File not found: "+mapName);
+		return false;
 	}
 	mapFile.close();
-	this->verifyMapParams();
+	return this->verifyMapParams();
 }
 
 void Map::parseMapParam(string line) {
-	if(line.substr(0,1) == "#") { //comment
-		// cout << "comment: " << line <<endl;
-	} else { //parse parameter
+	if(line.substr(0,1) != "#") { //not a comment
+		// Log::d("found param " + param + ": " + value);
 		string param;
 		string value;
     	stringstream stream(line);
@@ -71,9 +71,8 @@ void Map::parseMapParam(string line) {
 		} else if (param=="LongitudeStep") {
 			this->longitudeStep=atof(value.c_str());
 		} else {
-			cout << "unknown parameter: '" << param << "'" << endl;
+			Log::e("unknown parameter: '"+param+"'");
 		}
-		// cout << "found param " << param << ": " << value << endl;
 	}
 }
 
@@ -133,7 +132,9 @@ void Map::parseMapLine(string line, int lineNum) {
 	stringstream stream(line);
 	string val;
 	int length = (line.length()+1)/2;
-	this->setLongitudeCount(length);
+	if(!this->setLongitudeCount(length)) { //longitudeCount inconsistent
+		Log::e("parseMapLine #"+to_string(lineNum));
+	}
 	int i=0;
 	while(stream>>val) {
 		this->map[LngLatPos(i,lineNum)] = stoi(val);
