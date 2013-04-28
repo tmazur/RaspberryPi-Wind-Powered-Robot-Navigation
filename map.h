@@ -5,7 +5,7 @@
 #include <sstream>
 #include <map>
 #include <cmath>
-#include "log.cpp"
+#include "mlog.h"
 #include "lnglat.h"
 using namespace std;
 

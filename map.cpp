@@ -2,7 +2,7 @@
 
 Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
 	if(this->parseMap()) {
-		Log::d("Map loaded successfuly.");
+		dlog << "Map loaded successfuly.";
 	}
 }
 
@@ -11,7 +11,7 @@ bool Map::setLongitudeCount(int count) {
 		this->longitudeCount=count;
 		return true;
 	} else {
-		Log::getInstance().error("Map::setLongitudeCount already set to: "+to_string(this->longitudeCount)+", trying to set to: "+to_string(count));
+		elog << "LongitudeCount already set to: " << this->longitudeCount << ", trying to set to: " << count;
 		return false;
 	}
 }
@@ -43,7 +43,7 @@ bool Map::parseMap() {
 			}
 		}
 	} else {
-		Log::e("Map::parseMap; File not found: "+mapName);
+		elog << "Map::parseMap; File not found: " << mapName;
 		return false;
 	}
 	mapFile.close();
@@ -52,7 +52,7 @@ bool Map::parseMap() {
 
 void Map::parseMapParam(string line) {
 	if(line.substr(0,1) != "#") { //not a comment
-		// Log::d("found param " + param + ": " + value);
+		//dlog << "found param " << param << ": " << value;
 		string param;
 		string value;
     	stringstream stream(line);
@@ -71,7 +71,7 @@ void Map::parseMapParam(string line) {
 		} else if (param=="LongitudeStep") {
 			this->longitudeStep=atof(value.c_str());
 		} else {
-			Log::e("unknown parameter: '"+param+"'");
+			elog << "unknown parameter: '" << param << "'";
 		}
 	}
 }
@@ -80,16 +80,16 @@ bool Map::verifyMapParams() {
 	bool noError=true;
 	if(this->latitudeStart==0) {
 		noError=false;
-		Log::getInstance().error("latitudeStart not specified!");
+		elog << "latitudeStart not specified!";
 	}
 	if(this->longitudeStart==0) {
 		noError=false;
-		Log::getInstance().error("longitudeStart not specified!");
+		elog << "longitudeStart not specified!";
 	}
 	if(this->latitudeEnd==0) {
 		if(this->latitudeStep==0) {
 			noError=false;
-			Log::getInstance().error("latitudeEnd and latitudeStep not specified!");
+			elog << "latitudeEnd and latitudeStep not specified!";
 		} else {
 			this->latitudeEnd=(this->latitudeStart+this->latitudeStep*(this->latitudeCount-1));
 		}
@@ -99,7 +99,7 @@ bool Map::verifyMapParams() {
 		} else {
 			double temp = (latitudeEnd - latitudeStart)/latitudeCount;
 			if(abs(this->latitudeStep-temp)>0.00005) {
-				Log::getInstance().error("latitudeStep set to: "+to_string(this->latitudeStep)+", calculated to: "+to_string(temp));
+				elog << "latitudeStep set to: " << this->latitudeStep << ", calculated to: " << temp;
 				noError=false;
 			}
 		}
@@ -107,7 +107,7 @@ bool Map::verifyMapParams() {
 	if(this->longitudeEnd==0) {
 		if(this->longitudeStep==0) {
 			noError=false;
-			Log::getInstance().error("longitudeEnd and longitudeStep not specified!");
+			elog << "longitudeEnd and longitudeStep not specified!";
 		} else {
 			this->longitudeEnd=(this->longitudeStart+this->longitudeStep*(this->longitudeCount-1));
 		}
@@ -117,13 +117,13 @@ bool Map::verifyMapParams() {
 		} else {
 			double temp = (longitudeEnd - longitudeStart)/longitudeCount;
 			if(abs(this->longitudeStep-temp)>0.00005) {
-				Log::getInstance().error("longitudeStep set to: "+to_string(this->longitudeStep)+", calculated to: "+to_string(temp));
+				elog << "longitudeStep set to: " << this->longitudeStep << ", calculated to: " << temp;
 				noError=false;
 			}
 		}
 	}
 	if(!noError) {
-		Log::getInstance().error("Map::verifyMapParams; contains error!");
+		elog << "Map::verifyMapParams; contains error!";
 	}
 	return noError;
 }
@@ -133,7 +133,7 @@ void Map::parseMapLine(string line, int lineNum) {
 	string val;
 	int length = (line.length()+1)/2;
 	if(!this->setLongitudeCount(length)) { //longitudeCount inconsistent
-		Log::e("parseMapLine #"+to_string(lineNum));
+		elog << "parseMapLine #" << lineNum;
 	}
 	int i=0;
 	while(stream>>val) {
@@ -144,18 +144,18 @@ void Map::parseMapLine(string line, int lineNum) {
 }
 
 void Map::debugInfo() {
-	Log::getInstance().debug("=========Map::debugInfo===============")
-	.debug("mapName: " + mapName)
-	.debug("mapSize: " + to_string(map.size()))
-	.debug("latitudeStart: " + to_string(latitudeStart))
-	.debug("latitudeEnd: " + to_string(latitudeEnd))
-	.debug("latitudeStep: " + to_string(latitudeStep))
-	.debug("latitudeCount: " + to_string(latitudeCount))
-	.debug("longitudeStart: " + to_string(longitudeStart))
-	.debug("longitudeEnd: " + to_string(longitudeEnd))
-	.debug("longitudeStep: " + to_string(longitudeStep))
-	.debug("longitudeCount: " + to_string(longitudeCount))
-	.debug("=========Map::debugInfo=====END=======");
+	dlog << "=========Map::debugInfo===============" << "\n"
+	<< "mapName: " << mapName << "\n"
+	<< "mapSize: " << map.size() << "\n"
+	<< "latitudeStart: " << latitudeStart << "\n"
+	<< "latitudeEnd: " << latitudeEnd << "\n"
+	<< "latitudeStep: " << latitudeStep << "\n"
+	<< "latitudeCount: " << latitudeCount << "\n"
+	<< "longitudeStart: " << longitudeStart << "\n"
+	<< "longitudeEnd: " << longitudeEnd << "\n"
+	<< "longitudeStep: " << longitudeStep << "\n"
+	<< "longitudeCount: " << longitudeCount << "\n"
+	<< "=========Map::debugInfo=====END=======";
 }
 
 bool Map::checkPosition(int lng, int lat) {
@@ -176,33 +176,6 @@ LngLatPos Map::lngLatToPos(LngLat* lngLat) {
 	LngLatPos temp = LngLatPos(longitudePos,latitudePos);
 	return temp;
 }
-
-/**
- * Converts LngLatPos to int (1dim position)
- * @param  lpos LngLatPos to convert
- * @return      returns 1dim position as int
- */
-// int Map::lngLatPosToPos(LngLatPos lpos) {
-// 	return lpos.lng+lpos.lat*this->longitudeCount;
-// }
-
-// int Map::lngLatToPos(LngLat lngLat) {
-// 	LngLatPos lpos = this->lngLatToLngLatPos(lngLat);
-// 	int pos = this->lngLatPosToPos(lpos);
-
-// 	// Log::getInstance().debug("pos for "+to_string(longitude)+", "+to_string(latitude)+": "+to_string(pos));
-// 	if(lpos.lngPos > (this->longitudeCount) || lpos.latPos > this->latitudeCount || lpos.lngPos < 0 || lpos.latPos < 0) {
-// 		Log::getInstance().debug("pos for "+lngLat.toString()+": "+to_string(pos)+" is out of range!");
-// 		return -1;
-// 	}
-// 	return pos;
-// }
-
-// LngLat Map::posToLngLat(int pos) {
-// 	int longitudePos = pos%(longitudeCount);
-// 	int latitudePos = floor(pos/this->latitudeCount);
-// 	return this->posToLngLat(LngLatPos (longitudePos,latitudePos,this*));
-// }
 
 LngLat Map::posToLngLat(LngLatPos* pos) {
 	double longitude = this->longitudeStart+this->longitudeStep*pos->lngPos;

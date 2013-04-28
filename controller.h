@@ -7,7 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <map>
-#include "log.cpp"
+#include "mlog.h"
 #include "lnglat.h"
 #include "map.h"
 #include "db.h"

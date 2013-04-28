@@ -3,7 +3,7 @@
 #include <string>
 #include <mysql++.h>
 #include "lnglat.h"
-#include "log.cpp"
+#include "mlog.h"
 using namespace std;
 using namespace mysqlpp;
 
@@ -17,9 +17,7 @@ private:
     bool connect();
     bool updateDataParam(string,string);
 public:
-	// Db() {};
     Db(const char*,const char*,const char*,const char*);
-    // Db(const Db&);
     bool updateLngLat(LngLat);
 };
 

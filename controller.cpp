@@ -10,8 +10,10 @@ Controller::Controller() {
 	// this->lngLatGoal = LngLat(19.917730,50.061085);
 
 	// astar();
+	
+
 	this->db = new Db("localhost","robot","root","krim.agh");
-	this->db->updateLngLat(LngLat(10.0,10.0));
+	this->db->updateLngLat(LngLat(20.0,10.0));
 	this->run();
 }
 
@@ -81,13 +83,13 @@ double Controller::heuristic(LngLatPos p1) {
 
 void Controller::astar() {
 	if(!sizeof(this->map)>0) {
-		Log::e("Controller::astar(); Map not loaded!");
+		elog << "Map not loaded!";
 		return;
 	}
 	bool found = false;
 	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
-	Log::d("Find path from "+startPos.toString()+" to "+goalPos.toString());
+	dlog << "Find path from " << startPos.toString() << " to " << goalPos.toString();
 
 	vector <OpenCell> openCells;
 	OpenCell tempCell = OpenCell (0, this->heuristic(startPos, goalPos), startPos , LngLatPos(0,0)); //create open cell with current position
@@ -100,16 +102,15 @@ void Controller::astar() {
 		sort(openCells.begin(),openCells.end());
 		tempCell = openCells.back();
 		openCells.pop_back();
-		Log::d("opened cell "+tempCell.lngLatPos.toString());
+		dlog << "opened cell " << tempCell.lngLatPos.toString();
 
 		if(tempCell.lngLatPos==goalPos) {
 			found=true;
-			cout << "found path!!!" << endl;
+			dlog << "found path!!!";
 		} else {
 			for(int i=0;i<8;i++) {
 				Move curMove = moves[i];
 				LngLatPos newPos = tempCell.lngLatPos.offset(make_pair(curMove.dx, curMove.dy));
-				// Log::d("new position: "+newPos.toString());
 				if(this->map->checkPosition(newPos)==false) { //no obstacle on new position
 					if(closedCells.find(newPos)==closedCells.end()) { //first time visiting cell
 						openCells.push_back(OpenCell(tempCell.g+curMove.cost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos));
@@ -122,7 +123,7 @@ void Controller::astar() {
 	}
 
 	if(!found) {
-		Log::d("Path not found!");
+		dlog << "Path not found!";
 	} else {
 		this->getPath(closedCells);	
 	}
@@ -144,7 +145,7 @@ string Controller::getPath(ClosedCellMap closedCells) {
 		path.pop_back();
 	}
 
-	Log::d(spath);
+	dlog << "found path: " << spath;
 	return spath;
 }
 
