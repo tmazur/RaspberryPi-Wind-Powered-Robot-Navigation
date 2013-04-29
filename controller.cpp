@@ -1,23 +1,39 @@
 #include "controller.h"
 
-Controller::Controller() {
+Controller::Controller() : endThreads(false) {
 	// this->map = Map ("park_jordana.txt");
 
-	// this->lngLatCurrent = LngLat(this->map->getLongitudeStart(), this->map->getLatitudeStart());
-	// this->lngLatGoal = LngLat(this->map->getLongitudeEnd(), this->map->getLatitudeEnd());
+	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
+	this->lngLatGoal = this->lngLatCurrent;
 	
-	// this->lngLatCurrent = LngLat(19.916178,50.064160);
-	// this->lngLatGoal = LngLat(19.917730,50.061085);
-
-	// astar();
-	
-
-	this->db = new Db("localhost","robot","root","krim.agh");
-	this->db->updateLngLat(LngLat(20.0,10.0));
 	this->run();
 }
 
+void Controller::runMysql() {
+	this->db = new Db("localhost","robot","root","krim.agh");
+	
+	//reset data
+	this->db->updateLngLat(LngLat(0., 0.));
+
+	while(!endThreads) {
+		this->db->updateLngLat(this->lngLatCurrent);
+		LngLat newGoal = this->db->getLngLatGoal();
+		// dlog << "old goal: " << lngLatGoal.toString() << "; new goal: " << newGoal.toString();
+		if(newGoal != this->lngLatGoal) {
+			this->lngLatGoal = newGoal;
+			dlog << "new goal set: " << newGoal.toString();
+		}
+
+		std::chrono::milliseconds sleepDuration(10000);
+		std::this_thread::sleep_for(sleepDuration);
+	}
+	dlog << "ending threadMysql";
+}
+
 void Controller::run() {
+	std::thread thr(&Controller::runMysql, this);
+	std::swap(thr, threadMysql);
+
 	string action;
 	bool run=true;
 	while(run) {

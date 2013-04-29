@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <map>
+#include <thread>
 #include "mlog.h"
 #include "lnglat.h"
 #include "map.h"
@@ -21,14 +22,22 @@ private:
 	LngLat lngLatCurrent;
 	Map* map;
     Db* db;
+    thread threadMysql;
+    bool endThreads;
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
 	void astar();
     string getPath(ClosedCellMap);
     string getPathNextCoord(ClosedCellMap);
-    void run();
+    void runMysql();
 public:
-	Controller();
+    void run();
+    Controller();
+    ~Controller() {
+        endThreads=true;
+        dlog << "Waiting for threadMysql to terminate";
+        threadMysql.join();
+    };
 };
 
 struct OpenCell {

@@ -98,7 +98,7 @@ bool Map::verifyMapParams() {
 			this->latitudeStep=(latitudeEnd - latitudeStart)/(latitudeCount-1);
 		} else {
 			double temp = (latitudeEnd - latitudeStart)/latitudeCount;
-			if(abs(this->latitudeStep-temp)>0.00005) {
+			if(abs(this->latitudeStep-temp)>FLOAT_ACCURACY) {
 				elog << "latitudeStep set to: " << this->latitudeStep << ", calculated to: " << temp;
 				noError=false;
 			}
@@ -116,7 +116,7 @@ bool Map::verifyMapParams() {
 			this->longitudeStep=(longitudeEnd - longitudeStart)/(longitudeCount-1);
 		} else {
 			double temp = (longitudeEnd - longitudeStart)/longitudeCount;
-			if(abs(this->longitudeStep-temp)>0.00005) {
+			if(abs(this->longitudeStep-temp)>FLOAT_ACCURACY) {
 				elog << "longitudeStep set to: " << this->longitudeStep << ", calculated to: " << temp;
 				noError=false;
 			}

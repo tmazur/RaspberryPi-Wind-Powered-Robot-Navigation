@@ -1,6 +1,8 @@
 #ifndef LNGLAT_H
 #define LNGLAT_H
 #include <string>
+#include <cmath>
+#define FLOAT_ACCURACY 0.00005
 using namespace std;
 
 class Map;
@@ -20,6 +22,14 @@ struct LngLat {
     }
 
     LngLatPos toPos(Map*);
+
+    bool operator==(const LngLat& rhs) const {
+        return (abs(lng-rhs.lng) < FLOAT_ACCURACY) && (abs(lat-rhs.lat) < FLOAT_ACCURACY);
+    }
+
+    bool operator!=(const LngLat& rhs) const {
+        return !((*this) == rhs);
+    }
 };
 
 struct LngLatPos {

@@ -2,6 +2,7 @@
 #define DB_H
 #include <string>
 #include <mysql++.h>
+#include <ctime>
 #include "lnglat.h"
 #include "mlog.h"
 using namespace std;
@@ -14,11 +15,14 @@ private:
     const char *dbPassword;
     const char *dbHost;
     Connection* conn;
+    time_t lastUpdateTime;
     bool connect();
     bool updateDataParam(string,string);
+    string getDataParam(string);
 public:
     Db(const char*,const char*,const char*,const char*);
     bool updateLngLat(LngLat);
+    LngLat getLngLatGoal();
 };
 
 #endif
