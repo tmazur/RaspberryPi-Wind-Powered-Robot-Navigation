@@ -1,8 +1,8 @@
 #include "map.h"
 
-Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
+Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName("maps/"+mapName) {
 	if(this->parseMap()) {
-		dlog << "Map loaded successfully.";
+		dlog << "Mapa wczytana poprawnie.";
 	}
 }
 
@@ -11,7 +11,7 @@ bool Map::setLongitudeCount(int count) {
 		this->longitudeCount=count;
 		return true;
 	} else {
-		elog << "LongitudeCount already set to: " << this->longitudeCount << ", trying to set to: " << count;
+		elog << "LongitudeCount już ustawiono na: " << this->longitudeCount << ", próba ustawienia na: " << count;
 		return false;
 	}
 }
