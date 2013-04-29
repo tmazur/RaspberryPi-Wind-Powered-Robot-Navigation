@@ -21,13 +21,13 @@ void Controller::runMysql() {
 		// dlog << "old goal: " << lngLatGoal.toString() << "; new goal: " << newGoal.toString();
 		if(newGoal != this->lngLatGoal) {
 			this->lngLatGoal = newGoal;
-			dlog << "new goal set: " << newGoal.toString();
+			dlog << "nowy cel: " << newGoal.toString();
 		}
 
 		std::chrono::milliseconds sleepDuration(10000);
 		std::this_thread::sleep_for(sleepDuration);
 	}
-	dlog << "ending threadMysql";
+	dlog << "koniec threadMysql";
 }
 
 void Controller::run() {
@@ -36,36 +36,30 @@ void Controller::run() {
 
 	string action;
 	bool run=true;
+	this->printMenu();
 	while(run) {
-		cout << endl;
-		cout << "Check position (cp)" << endl;
-		cout << "Load map (lm)" << endl;
-		cout << "Find path (fp)" << endl;
-		cout << "Set current position (scp)" << endl;
-		cout << "Set goal (sg)" << endl;
-		cout << "Exit (exit)" << endl;
-		cout << "Choose action: ";
+		cout << endl << "Wybierz działanie: ";
 		cin >> action;
-		if(action=="lm") {
+		if(action=="wm") {
 			string map;
-			cout << "Load map name: ";
+			cout << "Ścieżka mapy: ";
 			cin >> map;
 			this->map = new Map(map);
-		} else if(action=="cp") {
+		} else if(action=="sp") {
 			double lng,lat;
 			cout << endl << "lng: ";
 			cin >> lng;
 			cout << endl << "lat: ";
 			cin >> lat;
 			cout << endl << "position check: " << this->map->checkPosition(LngLatPos(lng,lat));
-		} else if(action=="scp") {
-			double lng,lat;
-			cout << endl << "lng: ";
-			cin >> lng;
-			cout << endl << "lat: ";
-			cin >> lat;
-			this->lngLatCurrent = LngLat(lng, lat);
-		} else if(action=="sg") {
+		// } else if(action=="scp") {
+		// 	double lng,lat;
+		// 	cout << endl << "lng: ";
+		// 	cin >> lng;
+		// 	cout << endl << "lat: ";
+		// 	cin >> lat;
+		// 	this->lngLatCurrent = LngLat(lng, lat);
+		} else if(action=="uc") {
 			double lng,lat;
 			cout << endl << "lng: ";
 			cin >> lng;
@@ -74,7 +68,7 @@ void Controller::run() {
 			this->lngLatGoal = LngLat(lng, lat);
 		} else if(action=="fp") {
 			this->astar();
-		} else if(action=="exit") {
+		} else if(action=="exit" || action=="e") {
 			run=false;
 		} else {
 			if(action=="test1") {
@@ -83,10 +77,20 @@ void Controller::run() {
 				this->lngLatGoal=LngLat(4.,4.);
 				this->astar();
 			} else {
-				cout << "Unknown action: " << action << endl;
+				cout << "Nieznane działanie: " << action << endl;
+				this->printMenu();
 			}
 		}
 	}
+}
+
+void Controller::printMenu() {
+	cout << endl;
+	cout << "Sprawdź pozycję (sp)" << endl;
+	cout << "Wczytaj mapę (wm)" << endl;
+	// cout << "Find path (fp)" << endl;
+	cout << "Ustaw cel (uc)" << endl;
+	cout << "Koniec (exit)" << endl;
 }
 
 double Controller::heuristic(LngLatPos p1, LngLatPos p2) {
@@ -97,15 +101,15 @@ double Controller::heuristic(LngLatPos p1) {
 	return this->heuristic(p1, this->lngLatGoal.toPos(this->map));
 }
 
-void Controller::astar() {
+bool Controller::astar() {
 	if(!sizeof(this->map)>0) {
-		elog << "Map not loaded!";
-		return;
+		elog << "Brak wczytanej mapy!";
+		return false;
 	}
 	bool found = false;
 	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
-	dlog << "Find path from " << startPos.toString() << " to " << goalPos.toString();
+	dlog << "Szukam ścieżki z " << startPos.toString() << " do " << goalPos.toString();
 
 	vector <OpenCell> openCells;
 	OpenCell tempCell = OpenCell (0, this->heuristic(startPos, goalPos), startPos , LngLatPos(0,0)); //create open cell with current position
@@ -118,11 +122,11 @@ void Controller::astar() {
 		sort(openCells.begin(),openCells.end());
 		tempCell = openCells.back();
 		openCells.pop_back();
-		dlog << "opened cell " << tempCell.lngLatPos.toString();
+		// dlog << "opened cell " << tempCell.lngLatPos.toString();
 
 		if(tempCell.lngLatPos==goalPos) {
 			found=true;
-			dlog << "found path!!!";
+			dlog << "Ścieżka znaleziona!";
 		} else {
 			for(int i=0;i<8;i++) {
 				Move curMove = moves[i];
@@ -139,9 +143,11 @@ void Controller::astar() {
 	}
 
 	if(!found) {
-		dlog << "Path not found!";
+		dlog << "Nie udało się odnaleźć ścieżki!";
+		return false;
 	} else {
-		this->getPath(closedCells);	
+		this->getPath(closedCells);
+		return true;
 	}
 }
 
@@ -161,7 +167,7 @@ string Controller::getPath(ClosedCellMap closedCells) {
 		path.pop_back();
 	}
 
-	dlog << "found path: " << spath;
+	// dlog << "found path: " << spath;
 	return spath;
 }
 

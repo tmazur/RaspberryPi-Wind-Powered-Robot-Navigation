@@ -26,16 +26,17 @@ private:
     bool endThreads;
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
-	void astar();
+	bool astar();
     string getPath(ClosedCellMap);
     string getPathNextCoord(ClosedCellMap);
     void runMysql();
+    void printMenu();
 public:
     void run();
     Controller();
     ~Controller() {
         endThreads=true;
-        dlog << "Waiting for threadMysql to terminate";
+        dlog << "Czekanie na zakończenie threadMysql";
         threadMysql.join();
     };
 };

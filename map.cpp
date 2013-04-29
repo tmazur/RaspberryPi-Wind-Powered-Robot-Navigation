@@ -2,7 +2,7 @@
 
 Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
 	if(this->parseMap()) {
-		dlog << "Map loaded successfuly.";
+		dlog << "Map loaded successfully.";
 	}
 }
 
@@ -43,7 +43,7 @@ bool Map::parseMap() {
 			}
 		}
 	} else {
-		elog << "Map::parseMap; File not found: " << mapName;
+		elog << "Brak pliku: " << mapName;
 		return false;
 	}
 	mapFile.close();
@@ -71,7 +71,7 @@ void Map::parseMapParam(string line) {
 		} else if (param=="LongitudeStep") {
 			this->longitudeStep=atof(value.c_str());
 		} else {
-			elog << "unknown parameter: '" << param << "'";
+			elog << "Nieznany parametr: '" << param << "'";
 		}
 	}
 }
@@ -80,16 +80,16 @@ bool Map::verifyMapParams() {
 	bool noError=true;
 	if(this->latitudeStart==0) {
 		noError=false;
-		elog << "latitudeStart not specified!";
+		elog << "latitudeStart nieokreślony!";
 	}
 	if(this->longitudeStart==0) {
 		noError=false;
-		elog << "longitudeStart not specified!";
+		elog << "longitudeStart nieokreślony!";
 	}
 	if(this->latitudeEnd==0) {
 		if(this->latitudeStep==0) {
 			noError=false;
-			elog << "latitudeEnd and latitudeStep not specified!";
+			elog << "latitudeEnd i latitudeStep nieokreślony!";
 		} else {
 			this->latitudeEnd=(this->latitudeStart+this->latitudeStep*(this->latitudeCount-1));
 		}
@@ -99,7 +99,7 @@ bool Map::verifyMapParams() {
 		} else {
 			double temp = (latitudeEnd - latitudeStart)/latitudeCount;
 			if(abs(this->latitudeStep-temp)>FLOAT_ACCURACY) {
-				elog << "latitudeStep set to: " << this->latitudeStep << ", calculated to: " << temp;
+				elog << "latitudeStep ustawiony na: " << this->latitudeStep << ", obliczono: " << temp;
 				noError=false;
 			}
 		}
@@ -107,7 +107,7 @@ bool Map::verifyMapParams() {
 	if(this->longitudeEnd==0) {
 		if(this->longitudeStep==0) {
 			noError=false;
-			elog << "longitudeEnd and longitudeStep not specified!";
+			elog << "longitudeEnd i longitudeStep nieokreślony!";
 		} else {
 			this->longitudeEnd=(this->longitudeStart+this->longitudeStep*(this->longitudeCount-1));
 		}
@@ -117,13 +117,13 @@ bool Map::verifyMapParams() {
 		} else {
 			double temp = (longitudeEnd - longitudeStart)/longitudeCount;
 			if(abs(this->longitudeStep-temp)>FLOAT_ACCURACY) {
-				elog << "longitudeStep set to: " << this->longitudeStep << ", calculated to: " << temp;
+				elog << "longitudeStep ustawiony na: " << this->longitudeStep << ", obliczono: " << temp;
 				noError=false;
 			}
 		}
 	}
 	if(!noError) {
-		elog << "Map::verifyMapParams; contains error!";
+		elog << "Mapa zawiera nieprawidłowe parametry!";
 	}
 	return noError;
 }
