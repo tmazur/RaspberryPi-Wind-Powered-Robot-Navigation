@@ -41,6 +41,19 @@ public:
     bool setPathStatus(int status) {
         return this->updateDataParam("pathStatus", to_string(status));
     }
+    /**
+     * ustawia status wczytania mapy
+     * @param  status status wczytania mapy:
+     *                    0: niewczytana
+     *                    1: wczytana
+     *                    2: w trakcie wczytywania
+     *                    3: mapa nie istnieje
+     *                    4: błąd wczytywania
+     * @return        powodzenie
+     */
+    bool setMapStatus(int status) {
+        return this->updateDataParam("mapStatus", to_string(status));
+    }
 };
 
 #endif

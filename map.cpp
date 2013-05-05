@@ -1,7 +1,10 @@
 #include "map.h"
 
 Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName("maps/"+mapName) {
+	Db db = Db::getInstance();
+	db.setMapStatus(2); // wczytywanie mapy
 	if(this->parseMap()) {
+		db.setMapStatus(1); // mapa wczytana
 		dlog << "Mapa wczytana poprawnie.";
 	}
 }
@@ -44,10 +47,16 @@ bool Map::parseMap() {
 		}
 	} else {
 		elog << "Brak pliku: " << mapName;
+		Db::getInstance().setMapStatus(3); // mapa nie istnieje
 		return false;
 	}
 	mapFile.close();
-	return this->verifyMapParams();
+	if(!this->verifyMapParams()) {
+		Db::getInstance().setMapStatus(4); // błąd wczytywania mapy
+		return false;
+	} else {
+		return true;
+	}
 }
 
 void Map::parseMapParam(string line) {

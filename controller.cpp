@@ -12,6 +12,8 @@ void Controller::runMysql() {
 	
 	//reset data
 	db.updateLngLat(LngLat(0., 0.));
+	db.setPathStatus(0);
+	db.setMapStatus(0); //mapa niewczytana
 
 	//add 'load map' to worker queue
 	this->workerTaskParams.push(db.getMapName());

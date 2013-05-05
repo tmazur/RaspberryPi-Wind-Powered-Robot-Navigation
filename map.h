@@ -7,6 +7,7 @@
 #include <cmath>
 #include "mlog.h"
 #include "lnglat.h"
+#include "db.h"
 using namespace std;
 
 typedef map <LngLatPos,bool> LngLatPosMap;
