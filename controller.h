@@ -1,8 +1,6 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 #include <string>
-#include <fstream>
-#include <sstream>
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -38,11 +36,6 @@ public:
     void run();
     Controller();
     ~Controller() {
-        endThreads=true;
-        dlog << "Czekanie na zakończenie threadMysql";
-        threadMysql.join();
-        dlog << "Czekanie na zakończenie threadWorker";
-        threadWorker.join();
     };
 };
 

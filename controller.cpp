@@ -4,6 +4,7 @@ Controller::Controller() : endThreads(false) {
 	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
 	this->lngLatGoal = this->lngLatCurrent;
 	
+	
 	this->run();
 }
 
@@ -117,6 +118,12 @@ void Controller::run() {
 			}
 		}
 	}
+
+	endThreads=true;
+    dlog << "Czekanie na zakończenie threadMysql";
+    threadMysql.join();
+    dlog << "Czekanie na zakończenie threadWorker";
+    threadWorker.join();
 }
 
 void Controller::printMenu() {
