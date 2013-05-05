@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <map>
 #include <thread>
+#include <queue>
 #include "mlog.h"
 #include "lnglat.h"
 #include "map.h"
@@ -19,8 +20,10 @@ private:
     LngLat lngLatGoal;
 	LngLat lngLatCurrent;
 	Map* map;
-    Db* db;
+    queue<int> workerTask;
+    queue<string> workerTaskParams;
     thread threadMysql;
+    thread threadWorker;
     bool endThreads;
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
@@ -29,6 +32,7 @@ private:
     string getSPath(vPath);
     string getPathNextCoord(ClosedCellMap);
     void runMysql();
+    void runWorker();
     void printMenu();
 public:
     void run();
@@ -37,6 +41,8 @@ public:
         endThreads=true;
         dlog << "Czekanie na zakończenie threadMysql";
         threadMysql.join();
+        dlog << "Czekanie na zakończenie threadWorker";
+        threadWorker.join();
     };
 };
 

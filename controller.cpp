@@ -8,33 +8,64 @@ Controller::Controller() : endThreads(false) {
 }
 
 void Controller::runMysql() {
-	this->db = new Db("localhost","robot","root","krim.agh");
+	Db db = Db::getInstance();
 	
 	//reset data
-	this->db->updateLngLat(LngLat(0., 0.));
+	db.updateLngLat(LngLat(0., 0.));
 
-	//init
-	this->map = new Map(this->db->getMapName());
+	//add 'load map' to worker queue
+	this->workerTaskParams.push(db.getMapName());
+	this->workerTask.push(2);
 
 	while(!endThreads) {
-		this->db->updateLngLat(this->lngLatCurrent);
-		LngLat newGoal = this->db->getLngLatGoal();
+		db.updateLngLat(this->lngLatCurrent);
+		LngLat newGoal = db.getLngLatGoal();
 		// dlog << "old goal: " << lngLatGoal.toString() << "; new goal: " << newGoal.toString();
-		if(newGoal != this->lngLatGoal) {
+		if(newGoal != this->lngLatGoal && abs(newGoal.lat)>0. && abs(newGoal.lng)>0.) {
 			this->lngLatGoal = newGoal;
 			dlog << "nowy cel: " << newGoal.toString();
-			this->astar();
+			db.setPathStatus(0);
+			this->workerTask.push(1);
 		}
 
-		std::chrono::milliseconds sleepDuration(10000);
+		std::chrono::milliseconds sleepDuration(5000);
 		std::this_thread::sleep_for(sleepDuration);
 	}
 	dlog << "koniec threadMysql";
 }
 
+void Controller::runWorker() {
+	while(!endThreads) {
+		if(!this->workerTask.empty()) {
+			switch(this->workerTask.front()) {
+				case 0:
+					break;
+				case 1:
+					this->astar();
+					break;
+				case 2: {
+					string mapName = this->workerTaskParams.front();
+					this->workerTaskParams.pop();
+					dlog << "wczytywanie mapy: " << mapName;
+					this->map = new Map(mapName);
+					break;
+				} default:
+					elog << "nieznana komenda dla wątku threadWorker";
+					break;
+			}
+			this->workerTask.pop();
+		}
+		std::chrono::milliseconds sleepDuration(1000);
+		std::this_thread::sleep_for(sleepDuration);
+	}
+	dlog << "koniec threadWorker";
+}
+
 void Controller::run() {
 	std::thread thr(&Controller::runMysql, this);
 	std::swap(thr, threadMysql);
+	std::thread thr2(&Controller::runWorker, this);
+	std::swap(thr2, threadWorker);
 
 	string action;
 	bool run=true;
@@ -146,10 +177,13 @@ bool Controller::astar() {
 
 	if(!found) {
 		dlog << "Nie udało się odnaleźć ścieżki!";
+		Db::getInstance().setPathStatus(2);
 		return false;
 	} else {
 		vPath path = this->getPath(closedCells);
-		this->db->savePath(path, this->map);
+		Db tmpDb = Db::getInstance();
+		tmpDb.savePath(path, this->map);
+		tmpDb.setPathStatus(1);
 		return true;
 	}
 }
