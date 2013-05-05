@@ -2,11 +2,15 @@
 #define LNGLAT_H
 #include <string>
 #include <cmath>
+#include <map>
+#include <vector>
 #define FLOAT_ACCURACY 0.00005
 using namespace std;
 
 class Map;
 struct LngLatPos;
+typedef map<LngLatPos,LngLatPos> ClosedCellMap; // (currentPos,parentPos)
+typedef vector<LngLatPos> vPath;
 
 struct LngLat {
     double lng;

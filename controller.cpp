@@ -1,8 +1,6 @@
 #include "controller.h"
 
 Controller::Controller() : endThreads(false) {
-	// this->map = Map ("park_jordana.txt");
-
 	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
 	this->lngLatGoal = this->lngLatCurrent;
 	
@@ -15,6 +13,9 @@ void Controller::runMysql() {
 	//reset data
 	this->db->updateLngLat(LngLat(0., 0.));
 
+	//init
+	this->map = new Map(this->db->getMapName());
+
 	while(!endThreads) {
 		this->db->updateLngLat(this->lngLatCurrent);
 		LngLat newGoal = this->db->getLngLatGoal();
@@ -22,6 +23,7 @@ void Controller::runMysql() {
 		if(newGoal != this->lngLatGoal) {
 			this->lngLatGoal = newGoal;
 			dlog << "nowy cel: " << newGoal.toString();
+			this->astar();
 		}
 
 		std::chrono::milliseconds sleepDuration(10000);
@@ -146,28 +148,33 @@ bool Controller::astar() {
 		dlog << "Nie udało się odnaleźć ścieżki!";
 		return false;
 	} else {
-		this->getPath(closedCells);
+		vPath path = this->getPath(closedCells);
+		this->db->savePath(path, this->map);
 		return true;
 	}
 }
 
-string Controller::getPath(ClosedCellMap closedCells) {
+vPath Controller::getPath(ClosedCellMap closedCells) {
 	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
 
-	vector<LngLatPos> path;
+	vPath path;
 	LngLatPos tmpPos = closedCells[goalPos];
 	while(tmpPos!=startPos) {
 		path.push_back(tmpPos);
 		tmpPos = closedCells[tmpPos];
 	}
+	return path;
+}
+
+string Controller::getSPath(vPath path) {
 	string spath = "";
 	while(path.size()>0) {
 		spath += (path.back().toString()) + "; ";
 		path.pop_back();
 	}
 
-	// dlog << "found path: " << spath;
+	// dlog << "string path: " << spath;
 	return spath;
 }
 

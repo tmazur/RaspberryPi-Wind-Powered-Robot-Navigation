@@ -79,3 +79,28 @@ LngLat Db::getLngLatGoal() {
         return LngLat(atof(sLng.c_str()), atof(sLat.c_str()));
     }
 }
+
+bool Db::savePath(vPath path, Map* map) {
+    dlog << "Zapisuję ścieżkę do bazy danych...";
+    try {
+        Query query = this->conn->query();
+        query << "TRUNCATE path;";
+        query.execute();
+        
+        for(vPath::iterator i = path.begin(); i != path.end(); i++) {
+            LngLat tmp = i->toLngLat(map);
+            query.reset();
+            query << "INSERT INTO path (lng,lat) VALUES(" << escape << tmp.lng << ", " << escape << tmp.lat << ");";
+            query.execute();
+            
+        }
+        dlog << "Zapisywanie ścieżki zakonczone.";
+    } catch (const BadConversion& er) {
+        elog << "Db bad conversions error: " << er.what() << "; retrieved data size: " << er.retrieved << ", actual size: " << er.actual_size;
+        return false;
+    } catch (const Exception& er) {
+        elog << "Db connection error: " << er.what();
+        return false;
+    }
+    return true;
+}

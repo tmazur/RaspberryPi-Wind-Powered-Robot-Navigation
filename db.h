@@ -23,6 +23,10 @@ public:
     Db(const char*,const char*,const char*,const char*);
     bool updateLngLat(LngLat);
     LngLat getLngLatGoal();
+    string getMapName() {
+        return this->getDataParam("map");
+    };
+    bool savePath(vPath, Map*);
 };
 
 #endif

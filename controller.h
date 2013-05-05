@@ -14,8 +14,6 @@
 #include "db.h"
 using namespace std;
 
-typedef map<LngLatPos,LngLatPos> ClosedCellMap; // (currentPos,parentPos)
-
 class Controller {
 private:
     LngLat lngLatGoal;
@@ -27,7 +25,8 @@ private:
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
 	bool astar();
-    string getPath(ClosedCellMap);
+    vPath getPath(ClosedCellMap);
+    string getSPath(vPath);
     string getPathNextCoord(ClosedCellMap);
     void runMysql();
     void printMenu();
