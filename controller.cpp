@@ -64,6 +64,50 @@ void Controller::runWorker() {
 	dlog << "koniec threadWorker";
 }
 
+void Controller::i2cComm() {
+	int fd = wiringPiI2CSetup(3);
+	if(fd > -1) {
+		int reg, data, op, resp;
+		while(1) {
+			cout << "read (0) / write(1): ";
+			cin >> op;
+			if(op == 1) {
+				cout << "write register: ";
+				cin >> reg;
+				cout << "write data: ";
+				cin >> data;
+				resp = wiringPiI2CWriteReg8(fd, reg, data);
+				dlog << "response status: " << resp;
+			} else if (op==2) {
+				int s = sizeof(float);
+				dlog << "float size: " << s;
+				// int *byteArray[s];
+				union doubleOrByte {
+					char b[sizeof(float)];
+					float f;
+				} u;
+
+				int addrStart=1;
+				for(int i = 0; i<s; i++) {
+					resp = wiringPiI2CReadReg8(fd, addrStart+i);
+					dlog << "resp: " << resp;
+					u.b[i] = resp;	
+				}
+
+				// double final = *reinterpret_cast<double*>(byteArray);
+				dlog << "gpsLat: " << u.f;
+			} else {
+				cout << "read register: ";
+				cin >> reg;
+				resp = wiringPiI2CReadReg8(fd, reg) ;
+				dlog << "response data: " << resp;
+			}
+		}
+	} else {
+		elog << "nie można rozpocząć komunikacji i2c";
+	}
+}
+
 void Controller::run() {
 	std::thread thr(&Controller::runMysql, this);
 	std::swap(thr, threadMysql);
@@ -106,6 +150,8 @@ void Controller::run() {
 			this->astar();
 		} else if(action=="exit" || action=="e") {
 			run=false;
+		} else if (action=="i2c") {
+			i2cComm();
 		} else {
 			if(action=="test1") {
 				this->map = new Map("map_test1.txt");

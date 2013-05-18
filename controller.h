@@ -7,6 +7,7 @@
 #include <map>
 #include <thread>
 #include <queue>
+#include <wiringPiI2C.h>
 #include "mlog.h"
 #include "lnglat.h"
 #include "map.h"
@@ -32,6 +33,7 @@ private:
     void runMysql();
     void runWorker();
     void printMenu();
+    void i2cComm();
 public:
     void run();
     Controller();

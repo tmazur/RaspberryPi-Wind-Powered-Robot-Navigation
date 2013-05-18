@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -std=c++0x -I/usr/local/include/mysql++/ -I/usr/include/mysql/
-LDFLAGS=-L/usr/lib/mysql -lmysqlclient -lmysqlpp
+LDFLAGS=-L/usr/lib/mysql -lmysqlclient -lmysqlpp -lwiringPi
 SOURCES=lnglat.cpp db.cpp map.cpp controller.cpp main.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=main
