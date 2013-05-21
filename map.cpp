@@ -1,11 +1,17 @@
 #include "map.h"
 
-Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName("maps/"+mapName) {
-	Db db = Db::getInstance();
-	db.setMapStatus(2); // wczytywanie mapy
-	if(this->parseMap()) {
-		db.setMapStatus(1); // mapa wczytana
-		dlog << "Mapa wczytana poprawnie.";
+Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
+	if(mapName=="") {
+		Db::getInstance().setMapStatus(3); // mapa nie istnieje
+		elog << "Nie podano pliku z mapą!";
+	} else {
+		this->mapName = "maps/" + mapName;
+		Db db = Db::getInstance();
+		db.setMapStatus(2); // wczytywanie mapy
+		if(this->parseMap()) {
+			db.setMapStatus(1); // mapa wczytana
+			dlog << "Mapa wczytana poprawnie.";
+		}
 	}
 }
 
@@ -171,8 +177,16 @@ bool Map::checkPosition(int lng, int lat) {
 	return this->checkPosition(LngLatPos(lng,lat));
 }
 
+bool Map::inBounds(LngLat lngLat) {
+	return this->inBounds(this->lngLatToPos(&lngLat));
+}
+
+bool Map::inBounds(LngLatPos pos) {
+	return (pos.lngPos < this->longitudeCount && pos.latPos < this->latitudeCount && pos.lngPos >= 0 && pos.latPos > 0);
+}
+
 bool Map::checkPosition(LngLatPos pos) {
-	if(pos.lngPos > this->longitudeCount || pos.latPos > this->latitudeCount || pos.lngPos < 0 || pos.latPos < 0) {
+	if(!this->inBounds(pos)) {
 		return true; //if position out of range, obstacle=true
 	}
 

@@ -6,7 +6,7 @@ Db::Db(const char *host, const char *db, const char *user, const char *passwd) :
 
 bool Db::connect() {
 	try {
-        this->conn = new Connection(false);
+        this->conn = new Connection();
         this->conn->connect(dbName, dbHost, dbUser, dbPassword);
         Query query = this->conn->query();
     } catch (const BadConversion& er) {
@@ -52,6 +52,8 @@ string Db::getDataParam(string name) {
             string ret = "";
             ares[0]["value"].to_string(ret);
             return ret;
+        } else {
+            elog << "Pusty wynik zapytania: " << query;
         }
         return "";
     } catch (const BadConversion& er) {
@@ -103,4 +105,38 @@ bool Db::savePath(vPath path, Map* map) {
         return false;
     }
     return true;
+}
+
+LngLat Db::getFakeTWI() {
+    try {
+        string sLng, sLat;
+        Query query = this->conn->query();
+        query << "SELECT value FROM fakeTWI WHERE name=\"lng\" LIMIT 1;";
+        StoreQueryResult ares = query.store();
+
+        if(ares.num_rows()==1) {
+            ares[0]["value"].to_string(sLng);
+        } else {
+            elog << "Pusty wynik zapytania: " << query;
+        }
+
+        query.reset();
+        query << "SELECT value FROM fakeTWI WHERE name=\"lat\" LIMIT 1;";
+        ares = query.store();
+
+        if(ares.num_rows()==1) {
+            ares[0]["value"].to_string(sLat);
+        } else {
+            elog << "Pusty wynik zapytania: " << query;
+        }
+
+        return LngLat(atof(sLng.c_str()), atof(sLat.c_str()));
+    } catch (const BadConversion& er) {
+        elog << "Db bad conversions error: " << er.what() << "; retrieved data size: " << er.retrieved << ", actual size: " << er.actual_size;
+        return LngLat(0.,0.);
+    } catch (const Exception& er) {
+        elog << "Db connection error: " << er.what();
+        return LngLat(0.,0.);
+    }
+    return LngLat(0.,0.);
 }

@@ -17,13 +17,13 @@ private:
     Connection* conn;
     time_t lastUpdateTime;
     bool connect();
-    bool updateDataParam(string,string);
-    string getDataParam(string);
 public:
     Db(const char*,const char*,const char*,const char*);
     static Db getInstance() {
         return Db("localhost","robot","root","krim.agh");
     }
+    string getDataParam(string);
+    bool updateDataParam(string,string);
     bool updateLngLat(LngLat);
     LngLat getLngLatGoal();
     string getMapName() {
@@ -54,6 +54,7 @@ public:
     bool setMapStatus(int status) {
         return this->updateDataParam("mapStatus", to_string(status));
     }
+    LngLat getFakeTWI();
 };
 
 #endif

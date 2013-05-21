@@ -18,12 +18,18 @@ class Controller {
 private:
     LngLat lngLatGoal;
 	LngLat lngLatCurrent;
+    bool positionInBounds; // aktualna pozycja jest w granicach mapy
 	Map* map;
     queue<int> workerTask;
     queue<string> workerTaskParams;
     thread threadMysql;
     thread threadWorker;
+    thread threadTWI;
     bool endThreads;
+    uint windSpeed; //prędkość wiatru pomnożona przez 10
+    float windDirection; //kierunek wiatru - odchyłka od połnocy
+    float robotOrientation; //orientacja robota - odchyłka od północy
+    //vector<float> robotOrientationHistory; //historia orientacji robota
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
 	bool astar();
@@ -32,6 +38,7 @@ private:
     string getPathNextCoord(ClosedCellMap);
     void runMysql();
     void runWorker();
+    void runTWI();
     void printMenu();
     void i2cComm();
 public:

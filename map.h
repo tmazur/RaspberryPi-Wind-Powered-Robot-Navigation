@@ -39,6 +39,8 @@ public:
 	void debugInfo();
 	bool checkPosition(int,int);
 	bool checkPosition(LngLatPos);
+	bool inBounds(LngLatPos);
+	bool inBounds(LngLat);
 	LngLatPos lngLatToPos(LngLat* const);
 	LngLat posToLngLat(LngLatPos* const);
 	// LngLatPos lngLatToLngLatPos(double, double);

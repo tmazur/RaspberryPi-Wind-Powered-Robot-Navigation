@@ -1,6 +1,6 @@
 #include "controller.h"
 
-Controller::Controller() : endThreads(false) {
+Controller::Controller() : endThreads(false), positionInBounds(true) {
 	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
 	this->lngLatGoal = this->lngLatCurrent;
 	
@@ -20,6 +20,7 @@ void Controller::runMysql() {
 	this->workerTaskParams.push(db.getMapName());
 	this->workerTask.push(2);
 
+	bool positionInBounds = this->positionInBounds;
 	while(!endThreads) {
 		db.updateLngLat(this->lngLatCurrent);
 		LngLat newGoal = db.getLngLatGoal();
@@ -29,6 +30,11 @@ void Controller::runMysql() {
 			dlog << "nowy cel: " << newGoal.toString();
 			db.setPathStatus(0);
 			this->workerTask.push(1);
+		}
+
+		if(positionInBounds != this->positionInBounds) { //zapisz zmianę do db
+			positionInBounds = this->positionInBounds;
+			db.updateDataParam("positionInBounds", to_string(positionInBounds));
 		}
 
 		std::chrono::milliseconds sleepDuration(5000);
@@ -58,10 +64,34 @@ void Controller::runWorker() {
 			}
 			this->workerTask.pop();
 		}
-		std::chrono::milliseconds sleepDuration(1000);
-		std::this_thread::sleep_for(sleepDuration);
+		chrono::milliseconds sleepDuration(1000);
+		this_thread::sleep_for(sleepDuration);
 	}
 	dlog << "koniec threadWorker";
+}
+
+void Controller::runTWI() {
+	//tmp
+	this->windSpeed = 20;
+	this->windDirection=0;
+	this->robotOrientation=0;
+	
+
+	chrono::milliseconds sleepDuration(2000); //tmp
+	this_thread::sleep_for(sleepDuration);
+
+	Db db = Db::getInstance();
+	while(!endThreads) {
+		this->lngLatCurrent = db.getFakeTWI(); // todo: get current positon from ATmega
+
+		// sprawdź czy pozycja jest granicach mapy
+		if(sizeof(this->map)>0 && !this->mapLoading)
+			this->positionInBounds = this->map->inBounds(this->lngLatCurrent);
+
+		chrono::milliseconds sleepDuration(2000);
+		this_thread::sleep_for(sleepDuration);
+	}
+	dlog << "koniec threadTWI";
 }
 
 void Controller::i2cComm() {
@@ -113,6 +143,9 @@ void Controller::run() {
 	std::swap(thr, threadMysql);
 	std::thread thr2(&Controller::runWorker, this);
 	std::swap(thr2, threadWorker);
+	std::thread thr3(&Controller::runTWI, this);
+	std::swap(thr3, threadTWI);
+	
 
 	string action;
 	bool run=true;
@@ -166,10 +199,12 @@ void Controller::run() {
 	}
 
 	endThreads=true;
-    dlog << "Czekanie na zakończenie threadMysql";
-    threadMysql.join();
     dlog << "Czekanie na zakończenie threadWorker";
     threadWorker.join();
+    dlog << "Czekanie na zakończenie threadMysql";
+    threadMysql.join();
+    dlog << "Czekanie na zakończenie threadTWI";
+    threadTWI.join();
 }
 
 void Controller::printMenu() {
