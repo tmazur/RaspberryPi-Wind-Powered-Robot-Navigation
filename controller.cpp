@@ -1,6 +1,6 @@
 #include "controller.h"
 
-Controller::Controller() : endThreads(false), positionInBounds(true) {
+Controller::Controller() : endThreads(false), positionInBounds(true), mapLoading(true) {
 	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
 	this->lngLatGoal = this->lngLatCurrent;
 	
@@ -21,6 +21,7 @@ void Controller::runMysql() {
 	this->workerTask.push(2);
 
 	bool positionInBounds = this->positionInBounds;
+	string mapName;
 	while(!endThreads) {
 		db.updateLngLat(this->lngLatCurrent);
 		LngLat newGoal = db.getLngLatGoal();
@@ -35,6 +36,20 @@ void Controller::runMysql() {
 		if(positionInBounds != this->positionInBounds) { //zapisz zmianę do db
 			positionInBounds = this->positionInBounds;
 			db.updateDataParam("positionInBounds", to_string(positionInBounds));
+		}
+
+		// zmiana mapy
+		if(this->map && !this->mapLoading) {
+			mapName = db.getMapName();
+			if(mapName != this->map->getMapName()) {
+				//add 'load map' to worker queue
+				this->workerTaskParams.push(mapName);
+				this->workerTask.push(2);
+				this->mapLoading = true;
+				// przelicz ścieżkę do celu
+				db.setPathStatus(0);
+				this->workerTask.push(1);
+			}
 		}
 
 		std::chrono::milliseconds sleepDuration(5000);
@@ -57,6 +72,7 @@ void Controller::runWorker() {
 					this->workerTaskParams.pop();
 					dlog << "wczytywanie mapy: " << mapName;
 					this->map = new Map(mapName);
+					this->mapLoading = false;
 					break;
 				} default:
 					elog << "nieznana komenda dla wątku threadWorker";
@@ -75,10 +91,9 @@ void Controller::runTWI() {
 	this->windSpeed = 20;
 	this->windDirection=0;
 	this->robotOrientation=0;
-	
 
 	chrono::milliseconds sleepDuration(2000); //tmp
-	this_thread::sleep_for(sleepDuration);
+	this_thread::sleep_for(sleepDuration);	
 
 	Db db = Db::getInstance();
 	while(!endThreads) {
@@ -225,8 +240,14 @@ double Controller::heuristic(LngLatPos p1) {
 }
 
 bool Controller::astar() {
-	if(!sizeof(this->map)>0) {
+	if(!sizeof(this->map)>0 && !this->mapLoading) {
 		elog << "Brak wczytanej mapy!";
+		Db::getInstance().setPathStatus(2);
+		return false;
+	}
+	if(!this->map->inBounds(this->lngLatGoal)) {
+		dlog << "Cel poza obszerem mapy!";
+		Db::getInstance().setPathStatus(2);
 		return false;
 	}
 	bool found = false;

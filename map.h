@@ -8,6 +8,7 @@
 #include "mlog.h"
 #include "lnglat.h"
 #include "db.h"
+#define MAP_DIR "maps/"
 using namespace std;
 
 typedef map <LngLatPos,bool> LngLatPosMap;

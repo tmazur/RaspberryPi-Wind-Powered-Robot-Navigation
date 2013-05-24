@@ -41,6 +41,7 @@ private:
     void runTWI();
     void printMenu();
     void i2cComm();
+    bool mapLoading;
 public:
     void run();
     Controller();

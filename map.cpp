@@ -5,7 +5,7 @@ Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), l
 		Db::getInstance().setMapStatus(3); // mapa nie istnieje
 		elog << "Nie podano pliku z mapą!";
 	} else {
-		this->mapName = "maps/" + mapName;
+		this->mapName = mapName;
 		Db db = Db::getInstance();
 		db.setMapStatus(2); // wczytywanie mapy
 		if(this->parseMap()) {
@@ -34,7 +34,7 @@ bool Map::parseMap() {
 	string line;
 	bool mapStart = false;
 	int i = 0;
-	mapFile.open(this->mapName);
+	mapFile.open(MAP_DIR + this->mapName);
 	if(mapFile.is_open()) {
 		while(!mapFile.eof()) {
 			getline(mapFile,line);
