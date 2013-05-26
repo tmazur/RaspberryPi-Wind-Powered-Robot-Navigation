@@ -21,7 +21,7 @@ struct LngLat {
 
     }
 
-    string toString() {
+    string toString() const{
         return "("+to_string(lng)+","+to_string(lat)+")";
     }
 
@@ -33,6 +33,11 @@ struct LngLat {
 
     bool operator!=(const LngLat& rhs) const {
         return !((*this) == rhs);
+    }
+
+    friend ostream& operator<<(ostream& os, const LngLat& lnglat) {
+        os << lnglat.toString();
+        return os;
     }
 };
 
