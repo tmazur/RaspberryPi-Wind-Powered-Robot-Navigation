@@ -55,6 +55,9 @@ public:
         return this->updateDataParam("mapStatus", to_string(status));
     }
     LngLat getFakeTWI();
+    bool setTwiStatus(int status) {
+        return this->updateDataParam("twiStatus", to_string(status));
+    }
 };
 
 #endif

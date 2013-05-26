@@ -12,6 +12,7 @@
 #include "lnglat.h"
 #include "map.h"
 #include "db.h"
+#include "twi.h"
 using namespace std;
 
 class Controller {
@@ -26,6 +27,9 @@ private:
     thread threadWorker;
     thread threadTWI;
     bool endThreads;
+    vPath goalPath; // ścieżka do celu
+    uint sentPoint; // nr wysłanych punktów ze ścieżki do celu
+    int twiStatus;
     uint windSpeed; //prędkość wiatru pomnożona przez 10
     float windDirection; //kierunek wiatru - odchyłka od połnocy
     float robotOrientation; //orientacja robota - odchyłka od północy

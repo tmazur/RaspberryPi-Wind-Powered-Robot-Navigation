@@ -52,6 +52,8 @@ void Controller::runMysql() {
 			}
 		}
 
+		db.setTwiStatus(this->twiStatus);
+
 		std::chrono::milliseconds sleepDuration(5000);
 		std::this_thread::sleep_for(sleepDuration);
 	}
@@ -93,15 +95,48 @@ void Controller::runTWI() {
 	this->robotOrientation=0;
 
 	chrono::milliseconds sleepDuration(2000); //tmp
-	this_thread::sleep_for(sleepDuration);	
+	this_thread::sleep_for(sleepDuration);
 
+	TWI twi = TWI();
+	LngLat currGoal = LngLat(0., 0.);
 	Db db = Db::getInstance();
 	while(!endThreads) {
 		this->lngLatCurrent = db.getFakeTWI(); // todo: get current positon from ATmega
-
-		// sprawdź czy pozycja jest granicach mapy
-		if(sizeof(this->map)>0 && !this->mapLoading)
+		if(sizeof(this->map)>0 && !this->mapLoading) // sprawdź czy pozycja jest granicach mapy
 			this->positionInBounds = this->map->inBounds(this->lngLatCurrent);
+
+		if(this->goalPath.size() > 0) { // ścieżka wyznaczona
+			if(this->sentPoint == 0) { // nowa ścieżka
+				this->twiStatus = twi.writeFirstGoal(this->goalPath[0].toLngLat(this->map));
+				if(this->twiStatus < -1) { // twi ok
+					currGoal = this->goalPath[1].toLngLat(this->map);
+					this->twiStatus = twi.writeNextGoal(currGoal);
+					if(this->twiStatus > -1) { // twi ok
+						this->sentPoint=1;
+					} else { // twi error
+						elog << "Problem z komunikacją TWI: " << this->twiStatus;
+					}
+				} else { // twi error
+					elog << "Problem z komunikacją TWI: " << this->twiStatus;
+				}
+			} else {
+				LngLat tmp = twi.getCurrentGoal();
+				// dlog << "current goal from robot: " << tmp;
+				// dlog << "current set goal: " << currGoal;
+				if(tmp == currGoal) { // robot podąża do 'następnego' celu
+					// wyślij nowy 'następny' cel
+					this->sentPoint++;
+					if(this->sentPoint < this->goalPath.size()) {
+						currGoal = this->goalPath[this->sentPoint].toLngLat(this->map);
+						this->twiStatus = twi.writeNextGoal(currGoal);
+						if(this->twiStatus <= -1) { // twi error
+							elog << "Problem z komunikacją TWI: " << this->twiStatus;
+						}
+					} else { // wysłano ostatni punkt
+					}
+				}
+			}
+		}
 
 		chrono::milliseconds sleepDuration(2000);
 		this_thread::sleep_for(sleepDuration);
@@ -291,9 +326,11 @@ bool Controller::astar() {
 		Db::getInstance().setPathStatus(2);
 		return false;
 	} else {
-		vPath path = this->getPath(closedCells);
+		this->goalPath = this->getPath(closedCells);
+		this->sentPoint = 0;
+
 		Db tmpDb = Db::getInstance();
-		tmpDb.savePath(path, this->map);
+		tmpDb.savePath(this->goalPath, this->map);
 		tmpDb.setPathStatus(1);
 		return true;
 	}
