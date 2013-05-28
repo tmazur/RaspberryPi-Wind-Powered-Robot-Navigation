@@ -300,7 +300,9 @@ bool Controller::astar() {
 	ClosedCellMap closedCells;
 	vMoves moves = this->generateMoveVector();
 	int movesSize = moves.size();
+
 	bool found = false;
+	float goalCost = 0.;
 	while(!found && openCells.size()>0) {
 		sort(openCells.begin(),openCells.end());
 		tempCell = openCells.back();
@@ -309,7 +311,8 @@ bool Controller::astar() {
 
 		if(tempCell.lngLatPos==goalPos) {
 			found=true;
-			dlog << "Ścieżka znaleziona!";
+			goalCost = tempCell.f;
+			dlog << "Ścieżka znaleziona! Koszt: " << goalCost;
 		} else {
 			for(int i=0;i<movesSize;i++) {
 				Move curMove = moves[i];
@@ -325,15 +328,17 @@ bool Controller::astar() {
 
 	}
 
+	Db tmpDb = Db::getInstance();
+	tmpDb.setGoalCost(goalCost);
 	if(!found) {
 		dlog << "Nie udało się odnaleźć ścieżki!";
-		Db::getInstance().setPathStatus(2);
+		tmpDb.setPathStatus(2);
+		tmpDb.setGoalCost(goalCost);
 		return false;
 	} else {
 		this->goalPath = this->getPath(closedCells);
 		this->sentPoint = 0;
 
-		Db tmpDb = Db::getInstance();
 		tmpDb.savePath(this->goalPath, this->map);
 		tmpDb.setPathStatus(1);
 		return true;

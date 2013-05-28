@@ -58,6 +58,9 @@ public:
     bool setTwiStatus(int status) {
         return this->updateDataParam("twiStatus", to_string(status));
     }
+    bool setGoalCost(float cost) {
+        return this->updateDataParam("goalCost", to_string(cost));
+    }
 };
 
 #endif
