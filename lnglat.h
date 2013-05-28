@@ -50,7 +50,7 @@ struct LngLatPos {
 
     }
 
-    string toString() {
+    string toString() const {
         return "("+to_string(lngPos)+","+to_string(latPos)+")";
     }
 
@@ -72,8 +72,13 @@ struct LngLatPos {
         return !((*this) == rhs);
     }
 
+    friend ostream& operator<<(ostream& os, const LngLatPos& lnglat) {
+        os << lnglat.toString();
+        return os;
+    }
+
     LngLat toLngLat(Map*);
-    LngLatPos offset(pair<int,int>);
+    LngLatPos offset(int,int,Map*);
 };
 
 #endif

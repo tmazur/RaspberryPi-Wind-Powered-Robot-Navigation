@@ -54,6 +54,10 @@ void Controller::runMysql() {
 
 		db.setTwiStatus(this->twiStatus);
 
+		// todo: remove !!!
+		this->windDirection = stoi(db.getDataParam("windDirection"));
+		this->maxSailDeviantion = stoi(db.getDataParam("maxSailDeviantion"));
+
 		std::chrono::milliseconds sleepDuration(5000);
 		std::this_thread::sleep_for(sleepDuration);
 	}
@@ -285,7 +289,6 @@ bool Controller::astar() {
 		Db::getInstance().setPathStatus(2);
 		return false;
 	}
-	bool found = false;
 	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
 	dlog << "Szukam ścieżki z " << startPos.toString() << " do " << goalPos.toString();
@@ -295,8 +298,9 @@ bool Controller::astar() {
 	openCells.push_back(tempCell);
 
 	ClosedCellMap closedCells;
-	Move moves[8] = {Move(1,0,1), Move(0,-1,1), Move(0,1,1), Move(-1,0,1), Move(1,1,1.4142), Move(1,-1,1.4142), Move(-1,1,1.4142), Move(-1,-1,1.4142)};
-
+	vMoves moves = this->generateMoveVector();
+	int movesSize = moves.size();
+	bool found = false;
 	while(!found && openCells.size()>0) {
 		sort(openCells.begin(),openCells.end());
 		tempCell = openCells.back();
@@ -307,9 +311,9 @@ bool Controller::astar() {
 			found=true;
 			dlog << "Ścieżka znaleziona!";
 		} else {
-			for(int i=0;i<8;i++) {
+			for(int i=0;i<movesSize;i++) {
 				Move curMove = moves[i];
-				LngLatPos newPos = tempCell.lngLatPos.offset(make_pair(curMove.dx, curMove.dy));
+				LngLatPos newPos = tempCell.lngLatPos.offset(curMove.dLngPos, curMove.dLatPos, this->map);
 				if(this->map->checkPosition(newPos)==false) { //no obstacle on new position
 					if(closedCells.find(newPos)==closedCells.end()) { //first time visiting cell
 						openCells.push_back(OpenCell(tempCell.g+curMove.cost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos));
@@ -372,4 +376,34 @@ string Controller::getPathNextCoord(ClosedCellMap closedCells) {
 	}
 	
 	return tmpPos.toString();
+}
+
+vMoves Controller::generateMoveVector() {
+	vMoves moves;
+	moves.push_back(Move(0, 1, this->calculateMoveCost(0))); // N
+	moves.push_back(Move(0, -1, this->calculateMoveCost(180))); // S
+	moves.push_back(Move(-1, 0, this->calculateMoveCost(270))); // W
+	moves.push_back(Move(1, 0, this->calculateMoveCost(90))); // E
+	moves.push_back(Move(1, 1, this->calculateMoveCost(45))); // NE
+	moves.push_back(Move(1, -1, this->calculateMoveCost(135))); // SE
+	moves.push_back(Move(-1, -1, this->calculateMoveCost(225))); // SW
+	moves.push_back(Move(-1, 1, this->calculateMoveCost(315))); // NW
+
+
+	return moves;
+}
+
+float Controller::calculateMoveCost(int dir) {
+	float cost;
+	if(dir%90==0) {
+		cost = 1.;
+	} else {
+		cost = 1.1414;
+	}
+	float w = this->windDirection - dir; // kąt pomiędzy kierunkiem wiatru, a kierunkiem ruchu
+	while(w<-180)
+		w+=360;
+	while(w>180)
+		w-=360;
+	return (abs(w) <= this->maxSailDeviantion ? cost : cost * abs(w) * 100);
 }

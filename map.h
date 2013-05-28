@@ -31,6 +31,8 @@ private:
 	void parseMapLine(string,int);
 	bool verifyMapParams();
 public:
+	int invertLng;
+	int invertLat;
 	Map(string mapName);
 	string getMapName() {return mapName;};
 	double getLongitudeStart() {return longitudeStart;};

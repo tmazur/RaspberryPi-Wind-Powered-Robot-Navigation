@@ -10,6 +10,7 @@
 #include <wiringPiI2C.h>
 #include "mlog.h"
 #include "lnglat.h"
+#include "moves.h"
 #include "map.h"
 #include "db.h"
 #include "twi.h"
@@ -33,10 +34,12 @@ private:
     uint windSpeed; //prędkość wiatru pomnożona przez 10
     float windDirection; //kierunek wiatru - odchyłka od połnocy
     float robotOrientation; //orientacja robota - odchyłka od północy
+    bool mapLoading;
+    int maxSailDeviantion; // maksymalna odchyłka żagla od wiatru, po której można się sprawnie poruszać
     //vector<float> robotOrientationHistory; //historia orientacji robota
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
-	bool astar();
+    bool astar();
     vPath getPath(ClosedCellMap);
     string getSPath(vPath);
     string getPathNextCoord(ClosedCellMap);
@@ -45,52 +48,24 @@ private:
     void runTWI();
     void printMenu();
     void i2cComm();
-    bool mapLoading;
+    /**
+     * Generuje wektor obiektów Move
+     * określających możliwe ruchy po mapie, wraz z kosztem ruchu
+     * @return vector<Move>
+     */
+    vMoves generateMoveVector();
+    /**
+     * zwraca koszt ruchu w danym kierunku, uwzględnia wiatr
+     * 0: połnoc, 90: wschód, 180: południe, -90: zachód
+     * @param  int kierunek ruchu (odchyłka od północy)
+     * @return     koszt ruchu
+     */
+    float calculateMoveCost(int);
 public:
     void run();
     Controller();
     ~Controller() {
     };
 };
-
-struct OpenCell {
-    double f;
-    double g;
-    double h;
-    LngLatPos lngLatPos;
-    LngLatPos parentLngLatPos;
-
-    OpenCell(double _g, double _h, LngLatPos _lngLatPos, LngLatPos _parentLngLatPos)
-     : f(_g+_h), g(_g), h(_h), lngLatPos(_lngLatPos), parentLngLatPos(_parentLngLatPos) {
-     	// cout << "openCell h: " << h << "g: " << g << " f: " << f << endl;
-    }
-
-    bool operator < (const OpenCell& str) const {
-        return (f > str.f);
-    }
-};
-
-struct Move {
-    int dx;
-    int dy;
-    float cost;
-
-    Move(int dx, int dy, float cost) : dx(dx), dy(dy), cost(cost) {
-        
-    }
-};
-
-// struct ClosedCell {
-//     LngLatPos lngLatPos;
-//     LngLatPos parentLngLatPos;
-//     int expandCount;
-
-//     ClosedCell() {}
-
-//     ClosedCell(LngLatPos _lngLatPos, LngLatPos _parentLngLatPos)
-//      : lngLatPos(_lngLatPos), parentLngLatPos(_parentLngLatPos) {
-
-//     }
-// };
 
 #endif

@@ -1,6 +1,7 @@
 #include "map.h"
 
-Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0), longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName) {
+Map::Map(string mapName)  : latitudeStart(0), latitudeEnd(0), latitudeStep(0), latitudeCount(0),
+ longitudeStart(0), longitudeEnd(0), longitudeStep(0), longitudeCount(0), mapName(mapName), invertLng(1), invertLat(1) {
 	if(mapName=="") {
 		Db::getInstance().setMapStatus(3); // mapa nie istnieje
 		elog << "Nie podano pliku z mapą!";
@@ -61,6 +62,10 @@ bool Map::parseMap() {
 		Db::getInstance().setMapStatus(4); // błąd wczytywania mapy
 		return false;
 	} else {
+		if(this->longitudeStep<0)
+			this->invertLng = -1;
+		if(this->latitudeStep<0)
+			this->invertLat = -1;
 		return true;
 	}
 }
@@ -166,10 +171,12 @@ void Map::debugInfo() {
 	<< "latitudeEnd: " << latitudeEnd << "\n"
 	<< "latitudeStep: " << latitudeStep << "\n"
 	<< "latitudeCount: " << latitudeCount << "\n"
+	<< "latitudeInvert: " << invertLat << "\n"
 	<< "longitudeStart: " << longitudeStart << "\n"
 	<< "longitudeEnd: " << longitudeEnd << "\n"
 	<< "longitudeStep: " << longitudeStep << "\n"
 	<< "longitudeCount: " << longitudeCount << "\n"
+	<< "longitudeInvert: " << invertLng << "\n"
 	<< "=========Map::debugInfo=====END=======";
 }
 
