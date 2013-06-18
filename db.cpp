@@ -71,8 +71,8 @@ bool Db::updateLngLat(LngLat lnglat) {
 }
 
 LngLat Db::getLngLatGoal() {
-    string sLng = this->getDataParam("lng_goal");
-    string sLat = this->getDataParam("lat_goal");
+    string sLng = this->getDataParam("lngGoal");
+    string sLat = this->getDataParam("latGoal");
     // dlog << "goal: " << sLng << ", " << sLat;
     if(sLng=="" || sLat=="") {
         return LngLat(0.,0.);
