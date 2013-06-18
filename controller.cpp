@@ -275,7 +275,13 @@ void Controller::printMenu() {
 }
 
 double Controller::heuristic(LngLatPos p1, LngLatPos p2) {
-	return sqrt(pow(p1.lngPos-p2.lngPos,2) + pow(p1.latPos-p2.latPos,2));
+	// dokładna
+	int dx = abs(p1.lngPos-p2.lngPos);
+	int dy = abs(p1.latPos-p2.latPos);
+	return dx + dy - 0.5858 * min(dx, dy); // -0.58578 = sqrt(2) - 2
+
+	// euklidesowa
+	//return sqrt(pow(p1.lngPos-p2.lngPos,2) + pow(p1.latPos-p2.latPos,2));
 }
 
 double Controller::heuristic(LngLatPos p1) {
