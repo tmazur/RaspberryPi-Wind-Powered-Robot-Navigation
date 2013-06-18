@@ -140,3 +140,26 @@ LngLat Db::getFakeTWI() {
     }
     return LngLat(0.,0.);
 }
+
+string Db::getConfig(string name) {
+    try {
+        Query query = this->conn->query();
+        query << "SELECT value FROM config WHERE name=\"" << escape << name << "\" LIMIT 1;";
+        StoreQueryResult ares = query.store();
+
+        if(ares.num_rows()==1) {
+            string ret = "";
+            ares[0]["value"].to_string(ret);
+            return ret;
+        } else {
+            elog << "Pusty wynik zapytania: " << query;
+        }
+        return "";
+    } catch (const BadConversion& er) {
+        elog << "Db bad conversions error: " << er.what() << "; retrieved data size: " << er.retrieved << ", actual size: " << er.actual_size;
+        return "";
+    } catch (const Exception& er) {
+        elog << "Db connection error: " << er.what();
+        return "";
+    }
+}

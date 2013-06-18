@@ -61,6 +61,7 @@ public:
     bool setGoalCost(float cost) {
         return this->updateDataParam("goalCost", to_string(cost));
     }
+    string getConfig(string);
 };
 
 #endif

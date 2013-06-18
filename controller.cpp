@@ -11,6 +11,11 @@ Controller::Controller() : endThreads(false), positionInBounds(true), mapLoading
 void Controller::runMysql() {
 	Db db = Db::getInstance();
 	
+	//load config items
+	this->debug = (db.getConfig("debug")=="1"?true:false);
+	this->maxSailDeviantion = stoi(db.getConfig("maxSailDeviation"));
+	this->rotationPenalty = stof(db.getConfig("rotationPenalty"));
+
 	//reset data
 	db.updateLngLat(LngLat(0., 0.));
 	db.setPathStatus(0);
@@ -56,7 +61,6 @@ void Controller::runMysql() {
 
 		// todo: remove !!!
 		this->windDirection = stoi(db.getDataParam("windDirection"));
-		this->maxSailDeviantion = stoi(db.getDataParam("maxSailDeviantion"));
 
 		std::chrono::milliseconds sleepDuration(5000);
 		std::this_thread::sleep_for(sleepDuration);

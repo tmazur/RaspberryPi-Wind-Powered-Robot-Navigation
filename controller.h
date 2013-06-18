@@ -18,6 +18,7 @@ using namespace std;
 
 class Controller {
 private:
+    bool debug;
     LngLat lngLatGoal;
 	LngLat lngLatCurrent;
     bool positionInBounds; // aktualna pozycja jest w granicach mapy
@@ -36,6 +37,7 @@ private:
     float robotOrientation; //orientacja robota - odchyłka od północy
     bool mapLoading;
     int maxSailDeviantion; // maksymalna odchyłka żagla od wiatru, po której można się sprawnie poruszać
+    float rotationPenalty; // koszt zmiany orientacji robota (na 1 stopien obrotu)
     //vector<float> robotOrientationHistory; //historia orientacji robota
     double heuristic(LngLatPos);
     double heuristic(LngLatPos, LngLatPos);
