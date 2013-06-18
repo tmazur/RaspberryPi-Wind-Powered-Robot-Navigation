@@ -46,6 +46,9 @@ public:
 	bool inBounds(LngLat);
 	LngLatPos lngLatToPos(LngLat* const);
 	LngLat posToLngLat(LngLatPos* const);
+	int size() {
+		return this->longitudeCount*this->latitudeCount;
+	}
 	// LngLatPos lngLatToLngLatPos(double, double);
 	// LngLatPos lngLatToLngLatPos(LngLat);
 	// int lngLatToPos(LngLat);
