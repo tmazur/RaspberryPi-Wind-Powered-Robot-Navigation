@@ -298,20 +298,28 @@ bool Controller::astar() {
 	dlog << "Szukam ścieżki z " << startPos.toString() << " do " << goalPos.toString();
 
 	vector <OpenCell> openCells;
-	OpenCell tempCell = OpenCell (0, this->heuristic(startPos, goalPos), startPos , LngLatPos(0,0)); //create open cell with current position
+	OpenCell tempCell = OpenCell (0, this->heuristic(startPos, goalPos), startPos , LngLatPos(0,0), (int) robotOrientation); //create open cell with current position
 	openCells.push_back(tempCell);
 
 	ClosedCellMap closedCells;
-	vMoves moves = this->generateMoveVector();
+	vMoves moves = Move::generateMoveVector(this->windDirection, this->maxSailDeviantion);
 	int movesSize = moves.size();
 
 	bool found = false;
 	float goalCost = 0.;
+	int i = 0, progress = 0, interval = round(this->map->size()/100);
 	while(!found && openCells.size()>0) {
+		if(i==interval) {
+			i=0;
+			progress++;
+			dlog << progress << "%";
+		}
+		i++;
 		sort(openCells.begin(),openCells.end());
 		tempCell = openCells.back();
 		openCells.pop_back();
-		// dlog << "opened cell " << tempCell.lngLatPos.toString();
+		if (this->debug)
+			dlog << "otwarto komórkę " << tempCell.lngLatPos.toString() << "koszt: " << tempCell.f;
 
 		if(tempCell.lngLatPos==goalPos) {
 			found=true;
@@ -323,7 +331,12 @@ bool Controller::astar() {
 				LngLatPos newPos = tempCell.lngLatPos.offset(curMove.dLngPos, curMove.dLatPos, this->map);
 				if(this->map->checkPosition(newPos)==false) { //no obstacle on new position
 					if(closedCells.find(newPos)==closedCells.end()) { //first time visiting cell
-						openCells.push_back(OpenCell(tempCell.g+curMove.cost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos));
+						float dirChange = abs(Move::reduceDegrees(curMove.dir - tempCell.dir));
+						float dirChangeCost = dirChange * this->rotationPenalty;
+						if(this->debug) {
+							dlog << "dopisz komórkę " << newPos << "heurestyka: " << this->heuristic(newPos, goalPos) << " dirChange: " << dirChange << "rotationPenalty: " << dirChangeCost << "całkowity koszt: " << tempCell.g + curMove.cost + dirChangeCost + this->heuristic(newPos, goalPos);
+						}
+						openCells.push_back(OpenCell(tempCell.g + curMove.cost + dirChangeCost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos, curMove.dir));
 						closedCells[newPos]=tempCell.lngLatPos;
 					}
 				}
@@ -385,34 +398,4 @@ string Controller::getPathNextCoord(ClosedCellMap closedCells) {
 	}
 	
 	return tmpPos.toString();
-}
-
-vMoves Controller::generateMoveVector() {
-	vMoves moves;
-	moves.push_back(Move(0, 1, this->calculateMoveCost(0))); // N
-	moves.push_back(Move(0, -1, this->calculateMoveCost(180))); // S
-	moves.push_back(Move(-1, 0, this->calculateMoveCost(270))); // W
-	moves.push_back(Move(1, 0, this->calculateMoveCost(90))); // E
-	moves.push_back(Move(1, 1, this->calculateMoveCost(45))); // NE
-	moves.push_back(Move(1, -1, this->calculateMoveCost(135))); // SE
-	moves.push_back(Move(-1, -1, this->calculateMoveCost(225))); // SW
-	moves.push_back(Move(-1, 1, this->calculateMoveCost(315))); // NW
-
-
-	return moves;
-}
-
-float Controller::calculateMoveCost(int dir) {
-	float cost;
-	if(dir%90==0) {
-		cost = 1.;
-	} else {
-		cost = 1.1414;
-	}
-	float w = this->windDirection - dir; // kąt pomiędzy kierunkiem wiatru, a kierunkiem ruchu
-	while(w<-180)
-		w+=360;
-	while(w>180)
-		w-=360;
-	return (abs(w) <= this->maxSailDeviantion ? cost : cost * abs(w) * 100);
 }

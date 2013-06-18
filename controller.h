@@ -50,19 +50,6 @@ private:
     void runTWI();
     void printMenu();
     void i2cComm();
-    /**
-     * Generuje wektor obiektów Move
-     * określających możliwe ruchy po mapie, wraz z kosztem ruchu
-     * @return vector<Move>
-     */
-    vMoves generateMoveVector();
-    /**
-     * zwraca koszt ruchu w danym kierunku, uwzględnia wiatr
-     * 0: połnoc, 90: wschód, 180: południe, -90: zachód
-     * @param  int kierunek ruchu (odchyłka od północy)
-     * @return     koszt ruchu
-     */
-    float calculateMoveCost(int);
 public:
     void run();
     Controller();
