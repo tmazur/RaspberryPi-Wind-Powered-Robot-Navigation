@@ -1,9 +1,8 @@
 #include "controller.h"
 
-Controller::Controller() : endThreads(false), positionInBounds(true), mapLoading(true) {
-	this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
-	this->lngLatGoal = this->lngLatCurrent;
-	
+Controller::Controller() : endThreads(false), positionInBounds(true), mapLoading(true), windDirection(0), robotOrientation(0) {
+	//this->lngLatCurrent = LngLat(19.916178,50.064160); // todo: get current positon from ATmega
+	//this->lngLatGoal = this->lngLatCurrent;
 	
 	this->run();
 }
@@ -11,33 +10,36 @@ Controller::Controller() : endThreads(false), positionInBounds(true), mapLoading
 void Controller::runMysql() {
 	Db db = Db::getInstance();
 	
-	//load config items
+	//wczytanie konfiguracji
 	this->debug = (db.getConfig("debug")=="1"?true:false);
 	this->maxSailDeviantion = stoi(db.getConfig("maxSailDeviation"));
 	this->rotationPenalty = stof(db.getConfig("rotationPenalty"));
 
 	//reset data
 	db.updateLngLat(LngLat(0., 0.));
-	db.setPathStatus(0);
-	db.setMapStatus(0); //mapa niewczytana
+	db.setPathStatus(PATH_SEARCHING);
+	db.setMapStatus(MAP_NOTLOADED); //mapa niewczytana
 
-	//add 'load map' to worker queue
+	// dodaj zadanie wczytania mapy do kolejki wątku 'worker'
 	this->workerTaskParams.push(db.getMapName());
-	this->workerTask.push(2);
+	this->workerTask.push(TASK_LOADMAP);
 
-	bool positionInBounds = this->positionInBounds;
-	string mapName;
+	bool positionInBounds = this->positionInBounds; // czy pozycja znajduje się w obrębie mapy?
+	string mapName; // nazwa wczytanej mapy pobierana z db
+	LngLat newGoal; // cel pobierany z db
 	while(!endThreads) {
 		db.updateLngLat(this->lngLatCurrent);
-		LngLat newGoal = db.getLngLatGoal();
-		// dlog << "old goal: " << lngLatGoal.toString() << "; new goal: " << newGoal.toString();
-		if(newGoal != this->lngLatGoal && abs(newGoal.lat)>0. && abs(newGoal.lng)>0.) {
+		
+		// zmiana celu
+		newGoal = db.getLngLatGoal(); // pobierz cel z bazy danych
+		if(newGoal != this->lngLatGoal && abs(newGoal.lat)>0. && abs(newGoal.lng)>0.) { // zmieniono cel
 			this->lngLatGoal = newGoal;
 			dlog << "nowy cel: " << newGoal.toString();
-			db.setPathStatus(0);
-			this->workerTask.push(1);
+			db.setPathStatus(PATH_SEARCHING);
+			this->workerTask.push(TASK_FINDPATH);
 		}
 
+		// uaktualnij pole positionInBounds w bazie danych
 		if(positionInBounds != this->positionInBounds) { //zapisz zmianę do db
 			positionInBounds = this->positionInBounds;
 			db.updateDataParam("positionInBounds", to_string(positionInBounds));
@@ -47,37 +49,41 @@ void Controller::runMysql() {
 		if(this->map && !this->mapLoading) {
 			mapName = db.getMapName();
 			if(mapName != this->map->getMapName()) {
-				//add 'load map' to worker queue
+				// dodaj zadanie wczytania mapy do kolejki wątku 'worker'
 				this->workerTaskParams.push(mapName);
-				this->workerTask.push(2);
+				this->workerTask.push(TASK_LOADMAP);
 				this->mapLoading = true;
-				// przelicz ścieżkę do celu
-				db.setPathStatus(0);
-				this->workerTask.push(1);
+				// dodaj zadanie wyznaczenia trajektori do kolejki wątku 'worker'
+				db.setPathStatus(PATH_SEARCHING);
+				this->workerTask.push(TASK_FINDPATH);
 			}
 		}
 
-		db.setTwiStatus(this->twiStatus);
+		db.setTwiStatus(this->twiStatus); // uaktualnij status TWI
 
-		// todo: remove !!!
-		this->windDirection = stoi(db.getDataParam("windDirection"));
+		// todo: usunąć po podpięciu czujnika wiatru do uart
+		this->windDirection = stoi(db.getDataParam("windDirection")); // pobierz informację o kierunku wiatru z bazy danych
 
+		// opóźnienie pętli
 		std::chrono::milliseconds sleepDuration(5000);
 		std::this_thread::sleep_for(sleepDuration);
 	}
 	dlog << "koniec threadMysql";
 }
 
+/**
+ * metoda wątku 'worker'
+ */
 void Controller::runWorker() {
 	while(!endThreads) {
 		if(!this->workerTask.empty()) {
 			switch(this->workerTask.front()) {
 				case 0:
 					break;
-				case 1:
+				case TASK_FINDPATH: // wyznacz trajektorię
 					this->astar();
 					break;
-				case 2: {
+				case TASK_LOADMAP: { // wczytaj mapę
 					string mapName = this->workerTaskParams.front();
 					this->workerTaskParams.pop();
 					dlog << "wczytywanie mapy: " << mapName;
@@ -96,12 +102,41 @@ void Controller::runWorker() {
 	dlog << "koniec threadWorker";
 }
 
-void Controller::runTWI() {
-	//tmp
-	this->windSpeed = 20;
-	this->windDirection=0;
-	this->robotOrientation=0;
+void Controller::runUart() {
+	int fd = serialOpen(UART_DEVICE, 9600);
+	int bSize = 0; // ilość znaków w buforze
+	while(!endThreads) {
+		bSize = serialDataAvail(fd);
+		if(bSize==8) { // dwa inty czekają na odczyt
+			union IntOrByte {
+				char b[4];
+				int i;
+			} u;
+			
+			// odczyt kierunku wiatru
+			for (int i =0; i < 4; i++) { //odczytaj 4 bajty
+				u.b[i] = serialGetchar(fd);
+			}
+			this->windDirection = u.i;
 
+			// odczyt prędkości wiatru
+			u.i = 0; // resetujemy union
+			for (int i =0; i < 4; i++) { //odczytaj 4 bajty
+				u.b[i] = serialGetchar(fd);
+			}
+			this->windSpeed = u.i;
+		} else if(bSize>8) { // zbyt dużo informacji w buforze
+			serialFlush(fd);
+		}
+
+		chrono::milliseconds sleepDuration(500);
+		this_thread::sleep_for(sleepDuration);
+	}
+	serialClose(fd);
+	dlog << "koniec threadWorker";
+}
+
+void Controller::runTWI() {
 	chrono::milliseconds sleepDuration(2000); //tmp
 	this_thread::sleep_for(sleepDuration);
 
@@ -122,23 +157,23 @@ void Controller::runTWI() {
 					if(this->twiStatus > -1) { // twi ok
 						this->sentPoint=1;
 					} else { // twi error
-						elog << "Problem z komunikacją TWI: " << this->twiStatus;
+						// elog << "Problem z komunikacją TWI: " << this->twiStatus;
 					}
 				} else { // twi error
-					elog << "Problem z komunikacją TWI: " << this->twiStatus;
+					// elog << "Problem z komunikacją TWI: " << this->twiStatus;
 				}
-			} else {
+			} else { // kontynuuj wysyłanie trajektorii
 				LngLat tmp = twi.getCurrentGoal();
 				// dlog << "current goal from robot: " << tmp;
 				// dlog << "current set goal: " << currGoal;
 				if(tmp == currGoal) { // robot podąża do 'następnego' celu
 					// wyślij nowy 'następny' cel
 					this->sentPoint++;
-					if(this->sentPoint < this->goalPath.size()) {
+					if(this->sentPoint < this->goalPath.size()) { // pozostały punkty trajektorii do wysłania
 						currGoal = this->goalPath[this->sentPoint].toLngLat(this->map);
 						this->twiStatus = twi.writeNextGoal(currGoal);
 						if(this->twiStatus <= -1) { // twi error
-							elog << "Problem z komunikacją TWI: " << this->twiStatus;
+							// elog << "Problem z komunikacją TWI: " << this->twiStatus;
 						}
 					} else { // wysłano ostatni punkt
 					}
@@ -146,6 +181,7 @@ void Controller::runTWI() {
 			}
 		}
 
+		// opóźnij wątek
 		chrono::milliseconds sleepDuration(2000);
 		this_thread::sleep_for(sleepDuration);
 	}
@@ -197,12 +233,15 @@ void Controller::i2cComm() {
 }
 
 void Controller::run() {
+	// uruchom poszczególne wątki
 	std::thread thr(&Controller::runMysql, this);
 	std::swap(thr, threadMysql);
 	std::thread thr2(&Controller::runWorker, this);
 	std::swap(thr2, threadWorker);
 	std::thread thr3(&Controller::runTWI, this);
 	std::swap(thr3, threadTWI);
+	std::thread thr4(&Controller::runUart, this);
+	std::swap(thr4, threadUart);
 	
 
 	string action;
@@ -275,12 +314,12 @@ void Controller::printMenu() {
 }
 
 double Controller::heuristic(LngLatPos p1, LngLatPos p2) {
-	// dokładna
+	// odległość Czebyszewa
 	int dx = abs(p1.lngPos-p2.lngPos);
 	int dy = abs(p1.latPos-p2.latPos);
 	return dx + dy - 0.5858 * min(dx, dy); // -0.58578 = sqrt(2) - 2
 
-	// euklidesowa
+	// odległość euklidesowa
 	//return sqrt(pow(p1.lngPos-p2.lngPos,2) + pow(p1.latPos-p2.latPos,2));
 }
 
@@ -289,61 +328,66 @@ double Controller::heuristic(LngLatPos p1) {
 }
 
 bool Controller::astar() {
-	if(!sizeof(this->map)>0 && !this->mapLoading) {
+	if(!sizeof(this->map)>0 && !this->mapLoading) { // mapa niewczytana lub w trakcie wczytywania
 		elog << "Brak wczytanej mapy!";
-		Db::getInstance().setPathStatus(2);
+		Db::getInstance().setPathStatus(PATH_NOTFOUND);
 		return false;
 	}
-	if(!this->map->inBounds(this->lngLatGoal)) {
+	if(!this->map->inBounds(this->lngLatGoal)) { // cel poza mapą
 		dlog << "Cel poza obszerem mapy!";
-		Db::getInstance().setPathStatus(2);
+		Db::getInstance().setPathStatus(PATH_NOTFOUND);
 		return false;
 	}
+
+	// inicjalizacja
 	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
 	dlog << "Szukam ścieżki z " << startPos.toString() << " do " << goalPos.toString();
 
+	// utworz listę otwartych komórek, dopisz aktualną pozycję
 	vector <OpenCell> openCells;
 	OpenCell tempCell = OpenCell (0, this->heuristic(startPos, goalPos), startPos , LngLatPos(0,0), (int) robotOrientation); //create open cell with current position
 	openCells.push_back(tempCell);
 
+	// utwórz listę komórek zamkniętych
 	ClosedCellMap closedCells;
-	vMoves moves = Move::generateMoveVector(this->windDirection, this->maxSailDeviantion);
-	int movesSize = moves.size();
 
-	bool found = false;
-	float goalCost = 0.;
-	int i = 0, progress = 0, interval = round(this->map->size()/100);
-	while(!found && openCells.size()>0) {
-		if(i==interval) {
+	// wygenerowanie wektorów dozwolonych ruchów
+	vMoves moves = Move::generateMoveVector(this->windDirection, this->maxSailDeviantion);
+	int movesSize = moves.size(); // liczba dozwolonych ruchów
+	bool found = false; // znaleziono cel
+	float goalCost = 0.; // koszt dotarcia do celu
+	int i = 0, progress = 0, interval = round(this->map->size()/100); // zmienna do wyliczania postępu pracy algorytmu
+	while(!found && openCells.size()>0) { // cel nie osiągnięty i lista komórek otwartych nie jest pusta
+		if(i==interval) { // wypisz postęp procentowy (co 1%)
 			i=0;
-			progress++;
+			progress++; // postęp procentowy (przy założeniu 0% przeszkód)
 			dlog << progress << "%";
 		}
 		i++;
-		sort(openCells.begin(),openCells.end());
-		tempCell = openCells.back();
+
+		sort(openCells.begin(),openCells.end()); // sortowanie listy otwartych komórek po koszcie całkowitym 'f'
+		tempCell = openCells.back(); // pobranie komórki z najmniejszym kosztem
 		openCells.pop_back();
 		if (this->debug)
 			dlog << "otwarto komórkę " << tempCell.lngLatPos.toString() << "koszt: " << tempCell.f;
 
-		if(tempCell.lngLatPos==goalPos) {
+		if(tempCell.lngLatPos==goalPos) { // osiągnięto cel
 			found=true;
 			goalCost = tempCell.f;
 			dlog << "Ścieżka znaleziona! Koszt: " << goalCost;
 		} else {
-			for(int i=0;i<movesSize;i++) {
-				Move curMove = moves[i];
-				LngLatPos newPos = tempCell.lngLatPos.offset(curMove.dLngPos, curMove.dLatPos, this->map);
-				if(this->map->checkPosition(newPos)==false) { //no obstacle on new position
-					if(closedCells.find(newPos)==closedCells.end()) { //first time visiting cell
-						float dirChange = abs(Move::reduceDegrees(curMove.dir - tempCell.dir));
-						float dirChangeCost = dirChange * this->rotationPenalty;
-						if(this->debug) {
+			for(int i=0;i<movesSize;i++) { // iteracja po dozwolonych ruchach
+				Move curMove = moves[i]; // aktualny ruch
+				LngLatPos newPos = tempCell.lngLatPos.offset(curMove.dLngPos, curMove.dLatPos, this->map); // pozycja po wykonaniu ruchu
+				if(this->map->checkPosition(newPos)==false) { // brak przeszkód na nowej pozycji
+					if(closedCells.find(newPos)==closedCells.end()) { // komórka nie występuje na liście komórek zamkniętych
+						float dirChange = abs(Move::reduceDegrees(curMove.dir - tempCell.dir)); // zmiana orientacji
+						float dirChangeCost = dirChange * this->rotationPenalty; // koszt zmiany orientacji
+						if(this->debug)
 							dlog << "dopisz komórkę " << newPos << "heurestyka: " << this->heuristic(newPos, goalPos) << " dirChange: " << dirChange << "rotationPenalty: " << dirChangeCost << "całkowity koszt: " << tempCell.g + curMove.cost + dirChangeCost + this->heuristic(newPos, goalPos);
-						}
-						openCells.push_back(OpenCell(tempCell.g + curMove.cost + dirChangeCost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos, curMove.dir));
-						closedCells[newPos]=tempCell.lngLatPos;
+						openCells.push_back(OpenCell(tempCell.g + curMove.cost + dirChangeCost, this->heuristic(newPos, goalPos), newPos, tempCell.lngLatPos, curMove.dir)); // dopisz komórkę do listy komórek otwartch
+						closedCells[newPos]=tempCell.lngLatPos; // dopisz komórkę do listy komórek zamkniętych
 					}
 				}
 			}
@@ -352,18 +396,18 @@ bool Controller::astar() {
 	}
 
 	Db tmpDb = Db::getInstance();
-	tmpDb.setGoalCost(goalCost);
-	if(!found) {
+	tmpDb.setGoalCost(goalCost); // ustaw koszt osiągnięcia celu
+	if(!found) { // nie udało się wyznaczyć ścieżki do celu
 		dlog << "Nie udało się odnaleźć ścieżki!";
-		tmpDb.setPathStatus(2);
+		tmpDb.setPathStatus(PATH_NOTFOUND);
 		tmpDb.setGoalCost(goalCost);
 		return false;
-	} else {
-		this->goalPath = this->getPath(closedCells);
-		this->sentPoint = 0;
+	} else { // znaleziono trajektorię do celu
+		this->goalPath = this->getPath(closedCells); // ustaw trajektorię do celu
+		this->sentPoint = 0; // resetuj liczbę wysłanych punktów trajektorii
 
-		tmpDb.savePath(this->goalPath, this->map);
-		tmpDb.setPathStatus(1);
+		tmpDb.savePath(this->goalPath, this->map); // zapisz wyznaczoną trajektorię do bazy danych
+		tmpDb.setPathStatus(PATH_FOUND);
 		return true;
 	}
 }
@@ -373,35 +417,10 @@ vPath Controller::getPath(ClosedCellMap closedCells) {
 	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
 
 	vPath path;
-	LngLatPos tmpPos = closedCells[goalPos];
-	while(tmpPos!=startPos) {
-		path.push_back(tmpPos);
-		tmpPos = closedCells[tmpPos];
+	LngLatPos tmpPos = closedCells[goalPos]; // ustaw cel jako aktualną komórkę
+	while(tmpPos!=startPos) { // wróciliśmy do komórki startowej
+		path.push_back(tmpPos); // dopisz aktualną komórkę do 
+		tmpPos = closedCells[tmpPos]; // ustaw poprzednią komórkę (rodzica) jako aktualną komórkę
 	}
 	return path;
-}
-
-string Controller::getSPath(vPath path) {
-	string spath = "";
-	while(path.size()>0) {
-		spath += (path.back().toString()) + "; ";
-		path.pop_back();
-	}
-
-	// dlog << "string path: " << spath;
-	return spath;
-}
-
-string Controller::getPathNextCoord(ClosedCellMap closedCells) {
-	LngLatPos startPos = this->lngLatCurrent.toPos(this->map);
-	LngLatPos goalPos = this->lngLatGoal.toPos(this->map);
-
-	vector<LngLatPos> path;
-	LngLatPos tmpPos = closedCells[goalPos];
-	while(tmpPos!=startPos) {
-		path.push_back(tmpPos);
-		tmpPos = closedCells[tmpPos];
-	}
-	
-	return tmpPos.toString();
 }
